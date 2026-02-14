@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>Secure Gateway</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f8fbff;
+            --accent-blue: #2563eb;
+            --glow-blue: rgba(37, 99, 235, 0.4);
+            --text-main: #0f172a;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Blue Ambient Glow */
+        body::before {
+            content: ""; position: absolute; width: 450px; height: 450px;
+            background: radial-gradient(circle, var(--glow-blue) 0%, rgba(255,255,255,0) 70%);
+            top: -200px; right: -200px; z-index: -1; opacity: 0.6;
+        }
+
+        .main-wrapper { max-width: 500px; margin: 40px auto; padding: 0 20px; }
+
+        .page-title {
+            font-weight: 800; font-size: 1.8rem; letter-spacing: -1px;
+            background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        /* Wall IP Style */
+        #ip-wall {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            padding: 35px; border-radius: 28px; text-align: center;
+            border: 1px solid #fff; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
+            display: none;
+        }
+
+        .ip-box {
+            background: #f1f5f9; padding: 12px; border-radius: 12px;
+            font-family: 'Monaco', monospace; font-size: 0.9rem;
+            color: var(--accent-blue); font-weight: 700; margin: 20px 0;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* Buttons */
+        .link-grid { display: grid; gap: 14px; margin-top: 25px; }
+
+        .secure-btn {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #ffffff; border: 1px solid rgba(37, 99, 235, 0.1);
+            padding: 20px 24px; border-radius: 18px; cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none; color: var(--text-main);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .secure-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.15);
+            border-color: var(--accent-blue);
+        }
+
+        .btn-text { font-weight: 700; font-size: 1.1rem; }
+        .btn-icon-box {
+            width: 38px; height: 38px; background: #eff6ff;
+            border-radius: 12px; display: flex; align-items: center;
+            justify-content: center; color: var(--accent-blue);
+        }
+
+        /* Loader */
+        .spinner-custom {
+            width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid #fff; border-radius: 50%;
+            animation: spin 0.8s linear infinite; display: inline-block;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Admin UI */
+        .admin-card { background: white; padding: 30px; border-radius: 24px; border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+
+    <div class="main-wrapper">
+        
+        <!-- === ADMIN === -->
+        <div id="admin-view" style="display: none;">
+            <div class="admin-card shadow-sm">
+                <h4 class="fw-bold mb-4">Link Generator Pro</h4>
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">TITLE</label>
+                    <input type="text" id="page-title" class="form-control rounded-3" placeholder="Contoh: Game Full Version">
+                </div>
+                <div id="link-inputs"></div>
+                <button class="btn btn-light w-100 border mt-2 mb-4 fw-bold" onclick="addLinkRow()">+ ADD LINK</button>
+                <button class="btn btn-primary w-100 py-3 fw-bold rounded-3" onclick="generateUrl()">CREATE SMARTLINK</button>
+            </div>
+            <div id="result-area" class="mt-4 p-3 bg-white rounded-4 border shadow-sm" style="display:none">
+                <input type="text" id="final-url" class="form-control mb-2 text-center" readonly>
+                <button class="btn btn-dark w-100 py-2 fw-bold" onclick="copyUrl()">COPY URL</button>
+            </div>
+        </div>
+
+        <!-- === USER VIEW === -->
+        <div id="user-view" style="display: none;">
+            <div id="header-user" class="text-center mb-5">
+                <h1 id="display-title" class="page-title">...</h1>
+                <p class="text-muted small fw-medium">Verifikasi IP diperlukan untuk setiap unduhan</p>
+            </div>
+
+            <!-- WALL IP (WAJIB GANTI IP TIAP KLIK) -->
+            <div id="ip-wall" class="shadow-lg">
+                <div class="mb-4">
+                    <div class="mx-auto bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="bi bi-shield-check text-primary" style="font-size: 2.5rem;"></i>
+                    </div>
+                </div>
+                <h4 class="fw-bold">Ganti Koneksi Anda</h4>
+                <p class="text-muted small">Untuk keamanan, silakan ganti IP (Mode Pesawat) sebelum membuka link ini.</p>
+                
+                <div id="ip-display" class="ip-box">IP LAMA: Memuat...</div>
+                
+                <button id="btn-check-ip" class="btn btn-primary w-100 py-3 fw-bold rounded-4 shadow-sm" onclick="verifyNewIP()">
+                    SAYA SUDAH GANTI IP
+                </button>
+                <div id="verify-status" class="mt-3 small fw-bold"></div>
+            </div>
+
+            <!-- GRID LIST -->
+            <div id="link-list" class="link-grid">
+                <!-- Buttons Here -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const ADS = [
+            "https://petsrulefondness.com/bmaye227ji?key=21143f6352edf65a6b64615e9bb37bb9", 
+            "https://omg10.com/4/10608604"
+        ];
+        const SECRET_KEY = "kunci-rahasia-iq-tinggi";
+        const MEMORY_KEY = "sg_data_store";
+        const IP_API = "https://api.ipify.org?format=json";
+
+        let currentTargetUrl = ""; // Simpan link tujuan sementara
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            const params = new URLSearchParams(window.location.search);
+            const rawData = params.get('data');
+
+            if (rawData) {
+                try {
+                    const dec = CryptoJS.AES.decrypt(decodeURIComponent(rawData), SECRET_KEY).toString(CryptoJS.enc.Utf8);
+                    const parsed = JSON.parse(dec);
+                    localStorage.setItem(MEMORY_KEY, JSON.stringify({ payload: parsed, ts: Date.now() }));
+                    window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+                    initUser(parsed);
+                } catch (e) { console.error("Key Error"); }
+            } else {
+                const cached = getFromMemory();
+                if (cached) initUser(cached);
+                else document.getElementById('admin-view').style.display = 'block';
+            }
+        });
+
+        function getFromMemory() {
+            const raw = localStorage.getItem(MEMORY_KEY);
+            if (!raw) return null;
+            const obj = JSON.parse(raw);
+            if (Date.now() - obj.ts > 3600000) return null;
+            return obj.payload;
+        }
+
+        async function fetchIP() {
+            try {
+                const r = await fetch(IP_API);
+                const d = await r.json();
+                return d.ip;
+            } catch (e) { return null; }
+        }
+
+        async function initUser(data) {
+            document.getElementById('user-view').style.display = 'block';
+            document.getElementById('display-title').innerText = data.title;
+            
+            // Simpan IP saat ini sebagai "IP Terakhir Digunakan"
+            const ip = await fetchIP();
+            if (ip) localStorage.setItem('last_ip', ip);
+
+            renderButtons(data.links);
+        }
+
+        function renderButtons(links) {
+            const container = document.getElementById('link-list');
+            container.innerHTML = '';
+            links.forEach(item => {
+                const btn = document.createElement('div');
+                btn.className = 'secure-btn';
+                btn.innerHTML = `<span class="btn-text">${item.t}</span><div class="btn-icon-box"><i class="bi bi-chevron-right"></i></div>`;
+                btn.onclick = () => {
+                    currentTargetUrl = item.u;
+                    checkIPBeforeLink();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        async function checkIPBeforeLink() {
+            const currentIP = await fetchIP();
+            const lastIP = localStorage.getItem('last_ip');
+
+            // Jika IP masih sama, kunci dan minta ganti IP
+            if (currentIP === lastIP) {
+                document.getElementById('link-list').style.display = 'none';
+                document.getElementById('header-user').style.display = 'none';
+                document.getElementById('ip-wall').style.display = 'block';
+                document.getElementById('ip-display').innerText = "IP SAAT INI: " + currentIP;
+            } else {
+                // IP sudah beda, langsung gas iklan & file
+                executeTabUnder(currentIP);
+            }
+        }
+
+        async function verifyNewIP() {
+            const btn = document.getElementById('btn-check-ip');
+            const status = document.getElementById('verify-status');
+            const lastIP = localStorage.getItem('last_ip');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-custom"></span> MENGECEK...';
+            
+            const newIP = await fetchIP();
+            
+            if (!newIP) {
+                status.innerText = "Koneksi tidak stabil!";
+                status.style.color = "red";
+            } else if (newIP === lastIP) {
+                status.innerText = "IP BELUM BERUBAH! Gunakan Mode Pesawat.";
+                status.style.color = "red";
+            } else {
+                status.innerText = "VERIFIKASI BERHASIL! Membuka link...";
+                status.style.color = "green";
+                setTimeout(() => {
+                    executeTabUnder(newIP);
+                }, 800);
+            }
+            btn.disabled = false;
+            btn.innerHTML = "SAYA SUDAH GANTI IP";
+        }
+
+        function executeTabUnder(newIP) {
+            // Simpan IP baru sebagai IP terakhir
+            localStorage.setItem('last_ip', newIP);
+
+            // Sequential Ads Logic
+            let idx = parseInt(localStorage.getItem('ad_seq') || "0");
+            const adUrl = ADS[idx];
+            localStorage.setItem('ad_seq', (idx + 1) % ADS.length);
+
+            // Buka link asli di tab baru
+            window.open(currentTargetUrl, '_blank');
+            // Redirect halaman ini ke iklan
+            window.location.href = adUrl;
+        }
+
+        // --- ADMIN ---
+        function addLinkRow() {
+            const d = document.createElement('div');
+            d.className = 'd-flex gap-2 mb-2';
+            d.innerHTML = `<input type="text" class="form-control t-in" placeholder="Nama"><input type="text" class="form-control u-in" placeholder="URL Asli"><button class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>`;
+            document.getElementById('link-inputs').appendChild(d);
+        }
+
+        function generateUrl() {
+            const title = document.getElementById('page-title').value;
+            const rows = document.querySelectorAll('#link-inputs .d-flex');
+            let links = [];
+            rows.forEach(r => {
+                const t = r.querySelector('.t-in').value, u = r.querySelector('.u-in').value;
+                if(t && u) links.push({t, u});
+            });
+            const enc = CryptoJS.AES.encrypt(JSON.stringify({title, links}), SECRET_KEY).toString();
+            document.getElementById('final-url').value = window.location.origin + window.location.pathname + "?data=" + encodeURIComponent(enc);
+            document.getElementById('result-area').style.display = 'block';
+        }
+
+        function copyUrl() {
+            const el = document.getElementById('final-url'); el.select();
+            document.execCommand('copy'); alert('URL Gateway Copied!');
+        }
+    </script>
+</body>
+  </html>
