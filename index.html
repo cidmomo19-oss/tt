@@ -24,16 +24,23 @@
             color: var(--text-main);
             min-height: 100vh;
             overflow-x: hidden;
+            position: relative;
         }
 
-        /* Blue Ambient Glow */
+        /* --- BACKGROUND GLOW EFFECT (BIRU-BIRU) --- */
         body::before {
-            content: ""; position: absolute; width: 450px; height: 450px;
+            content: ""; position: fixed; width: 600px; height: 600px;
             background: radial-gradient(circle, var(--glow-blue) 0%, rgba(255,255,255,0) 70%);
-            top: -200px; right: -200px; z-index: -1; opacity: 0.6;
+            top: -200px; right: -200px; z-index: -1; opacity: 0.7;
+        }
+        
+        body::after {
+            content: ""; position: fixed; width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(255,255,255,0) 70%);
+            bottom: -150px; left: -150px; z-index: -1; opacity: 0.5;
         }
 
-        .main-wrapper { max-width: 500px; margin: 40px auto; padding: 0 20px; }
+        .main-wrapper { max-width: 500px; margin: 40px auto; padding: 0 20px; position: relative; z-index: 10; }
 
         .page-title {
             font-weight: 800; font-size: 1.8rem; letter-spacing: -1px;
@@ -43,12 +50,26 @@
 
         /* Wall IP Style */
         #ip-wall {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(15px);
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
             padding: 35px; border-radius: 28px; text-align: center;
-            border: 1px solid #fff; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
             display: none;
+            position: relative; /* Untuk tombol X */
+            animation: fadeIn 0.3s ease-out;
         }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        /* --- TOMBOL X (CLOSE) --- */
+        .btn-close-wall {
+            position: absolute; top: 15px; right: 20px;
+            background: #f1f5f9; border: none; width: 32px; height: 32px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            color: #64748b; font-size: 1.2rem; cursor: pointer; transition: 0.2s;
+        }
+        .btn-close-wall:hover { background: #e2e8f0; color: #0f172a; }
 
         .ip-box {
             background: #f1f5f9; padding: 12px; border-radius: 12px;
@@ -62,11 +83,12 @@
 
         .secure-btn {
             display: flex; justify-content: space-between; align-items: center;
-            background: #ffffff; border: 1px solid rgba(37, 99, 235, 0.1);
+            background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(37, 99, 235, 0.1);
             padding: 20px 24px; border-radius: 18px; cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none; color: var(--text-main);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(5px);
         }
 
         .secure-btn:hover {
@@ -106,6 +128,10 @@
                     <label class="small fw-bold text-muted">TITLE</label>
                     <input type="text" id="page-title" class="form-control rounded-3" placeholder="Contoh: Game Full Version">
                 </div>
+                <div class="mb-3">
+                    <label class="small fw-bold text-muted">URL SAFELINK (OPSIONAL)</label>
+                    <input type="text" id="safelink-url" class="form-control rounded-3" placeholder="Contoh: https://safelinku.com/?url=">
+                </div>
                 <div id="link-inputs"></div>
                 <button class="btn btn-light w-100 border mt-2 mb-4 fw-bold" onclick="addLinkRow()">+ ADD LINK</button>
                 <button class="btn btn-primary w-100 py-3 fw-bold rounded-3" onclick="generateUrl()">CREATE SMARTLINK</button>
@@ -123,21 +149,32 @@
                 <p class="text-muted small fw-medium">Verifikasi IP diperlukan untuk setiap unduhan</p>
             </div>
 
-            <!-- WALL IP (WAJIB GANTI IP TIAP KLIK) -->
+            <!-- WALL IP -->
             <div id="ip-wall" class="shadow-lg">
+                <!-- TOMBOL X -->
+                <button class="btn-close-wall" onclick="closeIpWall()"><i class="bi bi-x-lg"></i></button>
+
                 <div class="mb-4">
                     <div class="mx-auto bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
                         <i class="bi bi-shield-check text-primary" style="font-size: 2.5rem;"></i>
                     </div>
                 </div>
                 <h4 class="fw-bold">Ganti Koneksi Anda</h4>
-                <p class="text-muted small">Untuk keamanan, silakan ganti IP (Mode Pesawat) sebelum membuka link ini.</p>
+                <p class="text-muted small">Silakan ganti IP (Mode Pesawat) sebelum membuka link ini.</p>
                 
                 <div id="ip-display" class="ip-box">IP LAMA: Memuat...</div>
                 
                 <button id="btn-check-ip" class="btn btn-primary w-100 py-3 fw-bold rounded-4 shadow-sm" onclick="verifyNewIP()">
                     SAYA SUDAH GANTI IP
                 </button>
+                
+                <div id="safelink-container" style="display: none;">
+                    <div class="my-3 text-muted small">Atau jika malas ganti IP:</div>
+                    <button class="btn btn-outline-secondary w-100 py-2 fw-bold rounded-4" onclick="goToSafelink()">
+                        LEWATI DENGAN IKLAN
+                    </button>
+                </div>
+
                 <div id="verify-status" class="mt-3 small fw-bold"></div>
             </div>
 
@@ -158,7 +195,8 @@
         const MEMORY_KEY = "sg_data_store";
         const IP_API = "https://api.ipify.org?format=json";
 
-        let currentTargetUrl = ""; // Simpan link tujuan sementara
+        let currentTargetUrl = ""; 
+        let currentSafelinkBase = "";
 
         document.addEventListener("DOMContentLoaded", async () => {
             const params = new URLSearchParams(window.location.search);
@@ -199,7 +237,11 @@
             document.getElementById('user-view').style.display = 'block';
             document.getElementById('display-title').innerText = data.title;
             
-            // Simpan IP saat ini sebagai "IP Terakhir Digunakan"
+            currentSafelinkBase = data.safelink || "";
+            if(currentSafelinkBase) {
+                document.getElementById('safelink-container').style.display = 'block';
+            }
+
             const ip = await fetchIP();
             if (ip) localStorage.setItem('last_ip', ip);
 
@@ -225,15 +267,26 @@
             const currentIP = await fetchIP();
             const lastIP = localStorage.getItem('last_ip');
 
-            // Jika IP masih sama, kunci dan minta ganti IP
             if (currentIP === lastIP) {
                 document.getElementById('link-list').style.display = 'none';
                 document.getElementById('header-user').style.display = 'none';
                 document.getElementById('ip-wall').style.display = 'block';
                 document.getElementById('ip-display').innerText = "IP SAAT INI: " + currentIP;
             } else {
-                // IP sudah beda, langsung gas iklan & file
                 executeTabUnder(currentIP);
+            }
+        }
+
+        // FUNGSI TUTUP POPUP IP
+        function closeIpWall() {
+            document.getElementById('ip-wall').style.display = 'none';
+            document.getElementById('link-list').style.display = 'grid';
+            document.getElementById('header-user').style.display = 'block';
+        }
+
+        function goToSafelink() {
+            if (currentSafelinkBase && currentTargetUrl) {
+                window.location.href = currentSafelinkBase + encodeURIComponent(currentTargetUrl);
             }
         }
 
@@ -265,17 +318,11 @@
         }
 
         function executeTabUnder(newIP) {
-            // Simpan IP baru sebagai IP terakhir
             localStorage.setItem('last_ip', newIP);
-
-            // Sequential Ads Logic
             let idx = parseInt(localStorage.getItem('ad_seq') || "0");
             const adUrl = ADS[idx];
             localStorage.setItem('ad_seq', (idx + 1) % ADS.length);
-
-            // Buka link asli di tab baru
             window.open(currentTargetUrl, '_blank');
-            // Redirect halaman ini ke iklan
             window.location.href = adUrl;
         }
 
@@ -289,13 +336,14 @@
 
         function generateUrl() {
             const title = document.getElementById('page-title').value;
+            const safelink = document.getElementById('safelink-url').value;
             const rows = document.querySelectorAll('#link-inputs .d-flex');
             let links = [];
             rows.forEach(r => {
                 const t = r.querySelector('.t-in').value, u = r.querySelector('.u-in').value;
                 if(t && u) links.push({t, u});
             });
-            const enc = CryptoJS.AES.encrypt(JSON.stringify({title, links}), SECRET_KEY).toString();
+            const enc = CryptoJS.AES.encrypt(JSON.stringify({title, links, safelink}), SECRET_KEY).toString();
             document.getElementById('final-url').value = window.location.origin + window.location.pathname + "?data=" + encodeURIComponent(enc);
             document.getElementById('result-area').style.display = 'block';
         }
@@ -306,4 +354,4 @@
         }
     </script>
 </body>
-  </html>
+</html>
